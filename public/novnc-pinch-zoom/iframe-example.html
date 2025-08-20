@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>noVNC iframe 줌 제어 예제</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .vm-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .vm-header {
+            background-color: white !important;
+            color: black !important;
+            padding: 10px 15px !important;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .vm-info h2 {
+            margin: 0;
+            font-size: 18px;
+        }
+        
+        .vm-controls {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+        
+        .control-button {
+            background: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            transition: background-color 0.2s;
+        }
+        
+        .control-button:hover {
+            background: #e0e0e0;
+        }
+        
+        .control-button:active {
+            background: #d0d0d0;
+        }
+        
+        .zoom-controls {
+            display: flex;
+            gap: 2px;
+            align-items: center;
+            margin-right: 10px;
+        }
+        
+        .zoom-button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        
+        .zoom-button:hover {
+            background: #45a049;
+        }
+        
+        .zoom-level {
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            min-width: 40px;
+            text-align: center;
+            margin: 0 5px;
+        }
+        
+        .iframe-container {
+            height: 600px;
+            position: relative;
+        }
+        
+        #vncFrame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+        
+        .status-info {
+            padding: 10px 15px;
+            background: #e8f5e8;
+            border-top: 1px solid #ddd;
+            font-size: 14px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="vm-container">
+        <div class="vm-header">
+            <div class="vm-info">
+                <h2>win10_ (7) - noVNC 원격 데스크톱</h2>
+            </div>
+            <div class="vm-controls">
+                <!-- 줌 컨트롤 -->
+                <div class="zoom-controls">
+                    <button class="zoom-button" onclick="vncController.zoomOut()" title="축소">−</button>
+                    <button class="zoom-button" onclick="vncController.zoomIn()" title="확대">+</button>
+                    <button class="zoom-button" onclick="vncController.zoomReset()" title="1:1 크기">1:1</button>
+                    <span id="zoom-level-display" class="zoom-level">100%</span>
+                </div>
+                
+                <!-- 기존 컨트롤 버튼들 -->
+                <button class="control-button" title="파일 전송">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M5,20h14v-2H5V20z M5,10h4v6h6v-6h4l-7-7L5,10z"/>
+                    </svg>
+                </button>
+                
+                <button class="control-button" title="전체화면">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+                    </svg>
+                </button>
+                
+                <button class="control-button" title="연결 종료">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <div class="iframe-container">
+            <iframe id="vncFrame" 
+                    src="./vnc.html?host=112.214.237.240&port=5901&autoconnect=true" 
+                    allowfullscreen>
+            </iframe>
+        </div>
+        
+        <div class="status-info">
+            <strong>상태:</strong> iframe을 통한 noVNC 연결 | 
+            <strong>줌 제어:</strong> 상단 +/- 버튼 사용 | 
+            <strong>핀치 줌:</strong> iframe 내에서 터치 제스처 사용 가능
+        </div>
+    </div>
+
+    <!-- iframe 줌 제어 스크립트 로드 -->
+    <script src="iframe-zoom-controls.js"></script>
+    
+    <script>
+        // noVNC iframe 컨트롤러 초기화
+        let vncController;
+        
+        window.addEventListener('load', function() {
+            // iframe이 로드된 후 컨트롤러 생성
+            setTimeout(() => {
+                vncController = new NoVNCIframeController('vncFrame');
+                
+                // 줌 레벨 변경 시 커스텀 처리
+                vncController.onZoomLevelChanged = function(zoomLevel) {
+                    console.log(`줌 레벨 변경: ${zoomLevel}%`);
+                    document.getElementById('zoom-level-display').textContent = `${zoomLevel}%`;
+                };
+                
+                // 초기 줌 레벨 요청
+                setTimeout(() => {
+                    vncController.getZoomLevel();
+                }, 2000); // iframe 내 noVNC가 완전히 로드될 때까지 대기
+                
+            }, 1000);
+        });
+        
+        // 키보드 단축키 지원
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey) {
+                switch(e.key) {
+                    case '=':
+                    case '+':
+                        e.preventDefault();
+                        if (vncController) vncController.zoomIn();
+                        break;
+                    case '-':
+                        e.preventDefault();
+                        if (vncController) vncController.zoomOut();
+                        break;
+                    case '0':
+                        e.preventDefault();
+                        if (vncController) vncController.zoomReset();
+                        break;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
+
