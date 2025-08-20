@@ -155,7 +155,7 @@
         
         <div class="iframe-container">
             <iframe id="vncFrame" 
-                    src="./vnc.html?host=112.214.237.240&port=5901&autoconnect=true" 
+                    src="about:blank" 
                     allowfullscreen>
             </iframe>
         </div>
@@ -174,7 +174,46 @@
         // noVNC iframe 컨트롤러 초기화
         let vncController;
         
+        // 프로토콜에 따른 WebSocket 연결 설정
+        function getVncUrl() {
+            const isHttps = window.location.protocol === 'https:';
+            const host = '112.214.237.240';
+            const port = '5901';
+            
+            if (isHttps) {
+                // HTTPS 환경에서는 WSS 연결 시도
+                // 만약 VNC 서버가 WSS를 지원하지 않는다면 연결 실패할 수 있음
+                console.warn('HTTPS 환경에서 WSS 연결을 시도합니다. VNC 서버가 WSS를 지원해야 합니다.');
+                return `./vnc.html?host=${host}&port=${port}&autoconnect=true&encrypt=1`;
+            } else {
+                // HTTP 환경에서는 일반 WS 연결
+                return `./vnc.html?host=${host}&port=${port}&autoconnect=true`;
+            }
+        }
+        
+        // 연결 실패 시 대안 제시
+        function showConnectionError() {
+            const statusInfo = document.querySelector('.status-info');
+            statusInfo.innerHTML = `
+                <strong style="color: red;">연결 실패:</strong> HTTPS 환경에서 WSS 연결이 실패했습니다.<br>
+                <strong>해결 방법:</strong><br>
+                1. VNC 서버에서 WSS(WebSocket Secure) 지원 활성화<br>
+                2. 또는 WebSocket 프록시 서버 사용<br>
+                3. 또는 HTTP 환경에서 테스트 (로컬 개발 환경)
+            `;
+        }
+        
         window.addEventListener('load', function() {
+            // 동적으로 iframe src 설정
+            const iframe = document.getElementById('vncFrame');
+            iframe.src = getVncUrl();
+            
+            // iframe 로드 에러 감지
+            iframe.addEventListener('error', function() {
+                console.error('iframe 로드 실패');
+                showConnectionError();
+            });
+            
             // iframe이 로드된 후 컨트롤러 생성
             setTimeout(() => {
                 vncController = new NoVNCIframeController('vncFrame');
@@ -191,6 +230,17 @@
                 }, 2000); // iframe 내 noVNC가 완전히 로드될 때까지 대기
                 
             }, 1000);
+            
+            // WebSocket 연결 실패 감지 (5초 후)
+            setTimeout(() => {
+                // iframe 내부의 연결 상태를 확인할 수 없으므로 
+                // 사용자에게 연결 문제 가능성을 알림
+                if (window.location.protocol === 'https:') {
+                    console.warn('HTTPS 환경에서 WebSocket 연결 문제가 발생할 수 있습니다.');
+                    const statusInfo = document.querySelector('.status-info');
+                    statusInfo.innerHTML += '<br><strong style="color: orange;">참고:</strong> HTTPS 환경에서는 WSS 연결이 필요합니다.';
+                }
+            }, 5000);
         });
         
         // 키보드 단축키 지원

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>noVNC 연결 가이드</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        
+        .status.error {
+            background-color: #ffebee;
+            border-left: 4px solid #f44336;
+            color: #c62828;
+        }
+        
+        .status.warning {
+            background-color: #fff3e0;
+            border-left: 4px solid #ff9800;
+            color: #ef6c00;
+        }
+        
+        .status.info {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            color: #1565c0;
+        }
+        
+        .solution {
+            background-color: #f1f8e9;
+            border: 1px solid #8bc34a;
+            border-radius: 5px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .solution h3 {
+            color: #558b2f;
+            margin-top: 0;
+        }
+        
+        .code {
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        
+        .button {
+            display: inline-block;
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px 5px;
+            transition: background-color 0.3s;
+        }
+        
+        .button:hover {
+            background-color: #45a049;
+        }
+        
+        .button.secondary {
+            background-color: #2196F3;
+        }
+        
+        .button.secondary:hover {
+            background-color: #1976D2;
+        }
+        
+        ul {
+            padding-left: 20px;
+        }
+        
+        li {
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>noVNC WebSocket 연결 문제</h1>
+            <p>HTTPS 환경에서 WebSocket 연결 이슈 해결 가이드</p>
+        </div>
+        
+        <div class="status error">
+            <strong>문제:</strong> HTTPS 사이트에서 비보안 WebSocket (ws://) 연결이 차단됩니다.
+        </div>
+        
+        <div class="status warning">
+            <strong>원인:</strong> 브라우저의 Mixed Content 정책으로 인해 HTTPS 페이지에서 HTTP WebSocket 연결이 불가능합니다.
+        </div>
+        
+        <div class="solution">
+            <h3>해결 방법 1: VNC 서버에서 WSS 지원 활성화</h3>
+            <p>가장 권장되는 방법입니다. VNC 서버 설정에서 SSL/TLS를 활성화하세요.</p>
+            
+            <h4>websockify 프록시 사용 예시:</h4>
+            <div class="code">
+# SSL 인증서와 함께 websockify 실행
+websockify --ssl-only --cert=server.crt --key=server.key 6080 localhost:5900
+            </div>
+            
+            <h4>noVNC 연결 URL:</h4>
+            <div class="code">
+https://your-domain.com/vnc.html?host=112.214.237.240&port=6080&encrypt=1
+            </div>
+        </div>
+        
+        <div class="solution">
+            <h3>해결 방법 2: 별도 WebSocket 프록시 서버 구축</h3>
+            <p>WSS를 지원하는 별도의 프록시 서버를 구축합니다.</p>
+            
+            <h4>Node.js 프록시 서버 예시:</h4>
+            <div class="code">
+const WebSocket = require('ws');
+const https = require('https');
+
+// WSS 서버 생성 (SSL 인증서 필요)
+const wss = new WebSocket.Server({
+  port: 6080,
+  // SSL 설정 추가
+});
+
+wss.on('connection', (ws) => {
+  // VNC 서버로 프록시
+  const vncWs = new WebSocket('ws://112.214.237.240:5901/websockify');
+  
+  ws.on('message', (msg) => vncWs.send(msg));
+  vncWs.on('message', (msg) => ws.send(msg));
+});
+            </div>
+        </div>
+        
+        <div class="solution">
+            <h3>해결 방법 3: 로컬 개발 환경 사용</h3>
+            <p>HTTP 환경에서는 WebSocket 연결이 정상 작동합니다.</p>
+            
+            <div class="code">
+# 로컬 서버 실행
+npm run dev
+
+# 브라우저에서 접속
+http://localhost:4173/novnc-pinch-zoom/iframe-example.html
+            </div>
+        </div>
+        
+        <div class="status info">
+            <strong>참고:</strong> 현재 VNC 서버 (112.214.237.240:5901)가 WSS를 지원하지 않는 것으로 보입니다.
+            서버 관리자에게 WSS 지원 활성화를 요청하거나, 위의 해결 방법 중 하나를 선택하세요.
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="iframe-example.html" class="button">다시 시도</a>
+            <a href="vnc.html?host=112.214.237.240&port=5901&autoconnect=true" class="button secondary">직접 연결</a>
+        </div>
+        
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 14px;">
+            <h4>추가 정보:</h4>
+            <ul>
+                <li>현재 프로토콜: <span id="current-protocol"></span></li>
+                <li>WebSocket 지원: <span id="websocket-support"></span></li>
+                <li>SSL 상태: <span id="ssl-status"></span></li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        // 현재 환경 정보 표시
+        document.getElementById('current-protocol').textContent = window.location.protocol;
+        document.getElementById('websocket-support').textContent = typeof WebSocket !== 'undefined' ? '지원됨' : '지원되지 않음';
+        document.getElementById('ssl-status').textContent = window.location.protocol === 'https:' ? 'SSL 활성화' : 'SSL 비활성화';
+        
+        // 프로토콜에 따른 메시지 표시
+        if (window.location.protocol === 'https:') {
+            console.warn('HTTPS 환경에서는 WSS 연결이 필요합니다.');
+        }
+    </script>
+</body>
+</html>
