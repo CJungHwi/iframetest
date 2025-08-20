@@ -1,0 +1,8 @@
+export enum AppState {
+  IDLE,
+  SHARING,
+  CONNECTING,
+  CONNECTING_IN_PROGRESS,
+  CONNECTED,
+  ERROR,
+}

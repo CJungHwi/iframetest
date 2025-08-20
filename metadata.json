@@ -1,0 +1,6 @@
+
+{
+  "name": "WebRTC 원격 데스크톱",
+  "description": "브라우저에서 직접 Windows PC에 안전하게 접속하거나 화면을 공유하세요. 별도의 설치가 필요 없습니다.",
+  "requestFramePermissions": []
+}
